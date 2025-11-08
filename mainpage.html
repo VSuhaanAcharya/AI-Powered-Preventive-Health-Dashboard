@@ -1,0 +1,836 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI-Powered Preventive Health Dashboard — Integrated</title>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      --bg:#0f1724; --panel:#0b1220; --muted:#94a3b8; --accent:#60a5fa; --accent-2:#7c3aed; --card:#0b1320; --glass: rgba(255,255,255,0.03);
+      --success:#10b981; --danger:#ef4444; --warning:#f59e0b; --text:#e6eef8;
+      --glass-2: rgba(255,255,255,0.02);
+    }
+    *{box-sizing:border-box}
+    html,body,#app{height:100%;}
+    body{
+      margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg,var(--bg),#081021); color:var(--text); -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    .container{max-width:1200px;margin:20px auto;padding:16px}
+    header{display:flex;gap:12px;align-items:center;margin-bottom:18px}
+    .brand{display:flex;align-items:center;gap:14px}
+    .logo{width:56px;height:56px;background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#04263b}
+    h1{margin:0;font-size:20px}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+
+    /* top controls / tabs */
+    .top-controls{margin-left:auto;display:flex;gap:8px;align-items:center}
+    .btn{background:linear-gradient(90deg,var(--accent),var(--accent-2));border:0;padding:8px 12px;border-radius:8px;color:#04263b;font-weight:700;cursor:pointer}
+    .btn.secondary{background:none;border:1px solid rgba(255,255,255,0.04); color:var(--text)}
+    .tab-btn{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
+    .tab-btn.active{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#04263b;font-weight:700}
+
+    /* layout */
+    .grid{display:grid;grid-template-columns:320px 1fr;gap:16px}
+    .side{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+    .card{background:var(--card);padding:12px;border-radius:10px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.02)}
+    .profile{display:flex;gap:12px;align-items:center}
+    .avatar{width:56px;height:56px;border-radius:10px;background:linear-gradient(180deg,#fff2,#fff0);display:flex;align-items:center;justify-content:center;color:#07263a;font-weight:700}
+    .profile .meta{flex:1}
+    .small{font-size:12px;color:var(--muted)}
+    .big{font-size:18px;font-weight:600}
+    .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .stat{background:var(--glass);padding:8px;border-radius:8px}
+
+    select,input,button,textarea{font-family:inherit}
+    .muted{color:var(--muted)}
+
+    /* main */
+    .main{display:flex;flex-direction:column;gap:14px}
+    .toolbar{display:flex;align-items:center;gap:10px}
+    .range-picker{background:var(--glass);padding:6px;border-radius:8px}
+    .charts{display:grid;grid-template-columns:1fr 360px;gap:12px}
+    .chart-card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{padding:8px;border-bottom:1px dashed rgba(255,255,255,0.02);text-align:left}
+    .micro{font-size:12px;color:var(--muted)}
+
+    .metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .metric{padding:10px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));}
+
+    /* alerts */
+    .alerts{max-height:160px;overflow:auto;padding:6px}
+    .alert{padding:8px;border-radius:8px;margin-bottom:8px}
+    .alert.info{background:linear-gradient(90deg,#e6f4ff11,#ddf3ff08);border:1px solid rgba(96,165,250,0.12);}
+    .alert.warn{background:linear-gradient(90deg,#fff7ed11,#fff1e0);border:1px solid rgba(245,158,11,0.12);}
+    .alert.danger{background:linear-gradient(90deg,#ffecee11,#ffdfe0);border:1px solid rgba(239,68,68,0.12);}
+
+    /* forms */
+    .form-row{display:flex;gap:8px;align-items:center}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    input[type=text], input[type=number], input[type=date], textarea, select{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px;border-radius:8px;color:var(--text);width:100%}
+    textarea{resize:vertical}
+
+    /* tabs/pages */
+    .page{display:none}
+    .page.active{display:block}
+
+    /* health calc layout */
+    .calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .result{background:rgba(255,255,255,0.03);padding:12px;border-radius:8px}
+
+    /* modal (fallback) */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:1200}
+    .modal{background:linear-gradient(180deg,#071025,#081122);padding:18px;border-radius:12px;max-width:720px;width:95%;border:1px solid rgba(255,255,255,0.04)}
+
+    /* responsive */
+    @media (max-width:980px){
+      .grid{grid-template-columns:1fr;}
+      .charts{grid-template-columns:1fr}
+      .calc-grid{grid-template-columns:1fr}
+    }
+
+    /* small utilities / loader */
+    .pill{display:inline-block;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.02);font-size:12px}
+    .loader{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,0.06);border-top-color:var(--accent);animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* accessibility focus */
+    .focus:focus{outline:2px dashed rgba(96,165,250,0.5);outline-offset:4px}
+  </style>
+</head>
+<body>
+  <div id="app" class="container">
+    <header>
+      <div class="brand">
+        <div class="logo">PH</div>
+        <div>
+          <h1>AI-Powered Preventive Health Dashboard</h1>
+          <p class="lead">Real-time insights • Personalized reports • Preventive alerts</p>
+        </div>
+      </div>
+
+      <div class="top-controls">
+        <!-- tabs to switch between main dashboard, profile, and calculators -->
+        <button class="tab-btn active" data-page="dashboard" id="tab-dashboard">Dashboard</button>
+        <button class="tab-btn" data-page="profile" id="tab-profile">Profile</button>
+        <button class="tab-btn" data-page="calculations" id="tab-calculations">Health Calculations</button>
+
+        <!-- top action buttons from both files -->
+        <button id="btn-refresh" class="btn secondary" title="Reload dashboard">🔄 Refresh</button>
+        <button id="btn-sync" class="btn secondary">Sync Device</button>
+        <button id="btn-export" class="btn">Export CSV</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- LEFT COLUMN: Controls, profile summary, quick forms, alerts -->
+      <aside class="side">
+        <div class="card profile">
+          <div class="avatar" id="avatar">U</div>
+          <div class="meta">
+            <div class="big" id="profile-name">Guest User</div>
+            <div class="small">Age: <span id="profile-age">28</span> • <span id="profile-gender">Male</span></div>
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <button id="btn-edit-profile" class="btn secondary">Edit</button>
+              <button id="btn-generate-report" class="btn">Generate Report</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <strong>Quick Add — daily metrics</strong>
+            <span class="micro muted">Recent</span>
+          </div>
+          <form id="quick-form">
+            <label> Date <input type="date" id="q-date" required /></label>
+            <label> Steps <input type="number" id="q-steps" min="0" required /></label>
+            <label> Resting HR <input type="number" id="q-hr" min="30" max="200" required /></label>
+            <label> Sleep hours <input type="number" step="0.1" id="q-sleep" min="0" max="24" required /></label>
+            <label> Blood sugar (mg/dL) <input type="number" id="q-sugar" min="40" max="400" required /></label>
+            <label> Systolic <input type="number" id="q-sys" min="60" max="220" required /></label>
+            <label> Diastolic <input type="number" id="q-dia" min="40" max="140" required /></label>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button type="submit" class="btn">Add</button>
+              <button id="btn-add-random" type="button" class="btn secondary">Add Mock Day</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <strong>Alerts & Notifications</strong>
+          <div class="alerts" id="alerts"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button id="btn-clear-alerts" class="btn secondary">Clear</button>
+            <button id="btn-ack-all" class="btn">Acknowledge All</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <strong>Settings</strong>
+          <div style="margin-top:8px">
+            <label class="small">Risk threshold
+              <input type="range" id="risk-threshold" min="10" max="90" value="70" /></label>
+            <label class="small">Sync interval (mins)
+              <input type="number" id="sync-interval" min="1" max="1440" value="60" /></label>
+            <label class="small">Dark mode
+              <input type="checkbox" id="toggle-dark" checked /></label>
+          </div>
+        </div>
+
+        <div class="card">
+          <strong>Shortcuts</strong>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+            <button id="btn-go-to-chart" class="btn secondary">View Charts</button>
+            <button id="btn-view-data" class="btn secondary">Open Data Table</button>
+            <button id="btn-help" class="btn">Help / Tour</button>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- RIGHT COLUMN: Pages (Dashboard, Profile, Health Calculations) -->
+      <main class="main">
+
+        <!-- Dashboard Page -->
+        <section id="page-dashboard" class="page active">
+          <div class="toolbar card" style="display:flex;align-items:center;gap:12px">
+            <div style="display:flex;gap:12px;align-items:center">
+              <div class="range-picker">
+                Range: <select id="range-select" class="focus">
+                  <option value="7">7 days</option>
+                  <option value="14">14 days</option>
+                  <option value="30" selected>30 days</option>
+                  <option value="90">90 days</option>
+                </select>
+              </div>
+              <div class="range-picker">Metric: <select id="metric-select">
+                <option value="steps">Steps</option>
+                <option value="restingHR">Resting HR</option>
+                <option value="sleepHours">Sleep</option>
+                <option value="bloodSugar">Blood Sugar</option>
+                <option value="systolic">Systolic BP</option>
+                <option value="weight">Weight</option>
+              </select></div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input id="search" placeholder="Search notes or date (YYYY-MM-DD)" style="background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px;border-radius:8px;color:var(--text)" />
+              </div>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+              <div class="micro muted">Risk score: <span id="risk-score">-</span></div>
+              <div class="micro muted">Status: <span id="risk-cat">-</span></div>
+              <div id="mini-loader" style="display:none" class="loader" title="loading"></div>
+            </div>
+          </div>
+
+          <div class="charts">
+            <div>
+              <div class="chart-card">
+                <strong>Trend — <span id="chart-title">Steps</span></strong>
+                <canvas id="trendChart" height="220"></canvas>
+                <div style="display:flex;justify-content:space-between;margin-top:8px">
+                  <div class="metrics-grid">
+                    <div class="metric"><div class="small">Avg</div><div id="m-avg" class="big">-</div></div>
+                    <div class="metric"><div class="small">Min</div><div id="m-min" class="big">-</div></div>
+                    <div class="metric"><div class="small">Max</div><div id="m-max" class="big">-</div></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+                    <div class="pill">Moving Avg (7d) <span id="m-ma">-</span></div>
+                    <div><button id="btn-download-chart" class="btn secondary">Download PNG</button></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="chart-card" style="margin-top:12px">
+                <strong>Activity Timeline</strong>
+                <canvas id="activityChart" height="120"></canvas>
+                <div class="micro muted" style="margin-top:8px">Shows daily activity mix and trends</div>
+              </div>
+            </div>
+
+            <div>
+              <div class="chart-card">
+                <strong>Risk & Predictive Insights</strong>
+                <div style="margin-top:8px">
+                  <div id="insight-box" class="micro muted">Loading insights…</div>
+                  <div style="margin-top:10px">
+                    <div id="suggestions"></div>
+                  </div>
+                  <div style="margin-top:8px;display:flex;gap:8px">
+                    <button id="btn-schedule-checkup" class="btn">Schedule Checkup</button>
+                    <button id="btn-export-report" class="btn secondary">Export Report</button>
+                    <button id="btn-open-calculator" class="btn secondary">Open Calculator</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="chart-card" style="margin-top:12px">
+                <strong>Recent Data Table</strong>
+                <div style="max-height:220px;overflow:auto;margin-top:8px">
+                  <table id="data-table">
+                    <thead><tr><th>Date</th><th>Steps</th><th>HR</th><th>Sleep</th><th>Sugar</th><th>BP</th><th>Weight</th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="card" style="display:flex;gap:12px;flex-direction:column">
+            <strong>Notes & Actions</strong>
+            <div style="display:flex;gap:12px">
+              <textarea id="note-text" placeholder="Add a note or reminder (e.g., 'Visited GP, changed meds')" style="flex:1;height:60px;padding:10px;border-radius:8px;color:var(--text);background:transparent;border:1px solid rgba(255,255,255,0.03)"></textarea>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <button id="btn-add-note" class="btn">Add Note</button>
+                <button id="btn-download-data" class="btn secondary">Download Data</button>
+              </div>
+            </div>
+            <div id="notes-list" style="margin-top:8px;max-height:120px;overflow:auto"></div>
+          </div>
+
+          <footer style="margin-top:14px">
+            <div class="micro muted">Built for demo • Not medical advice • Version 1.0 • Offline-capable • LocalStorage</div>
+          </footer>
+        </section>
+
+        <!-- Profile Page -->
+        <section id="page-profile" class="page">
+          <div class="card">
+            <h2>Profile</h2>
+            <p class="small">Edit or complete your profile. These values are used for some calculations (BMR, TDEE, HR zones).</p>
+            <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
+              <div style="flex:1;min-width:220px">
+                <label>Full name <input id="p-name" type="text" /></label>
+                <label>Birth date <input id="p-dob" type="date" /></label>
+                <label>Age <input id="p-age" type="number" min="0" /></label>
+                <label>Gender <select id="p-gender"><option>Male</option><option>Female</option><option>Other</option></select></label>
+              </div>
+              <div style="flex:1;min-width:220px">
+                <label>Height (cm) <input id="p-height" type="number" min="50" max="250" /></label>
+                <label>Weight (kg) <input id="p-weight" type="number" min="20" max="300" step="0.1" /></label>
+                <label>Activity Level <select id="p-activity">
+                  <option value="1.2">Sedentary (little/no exercise)</option>
+                  <option value="1.375">Lightly active (light exercise)</option>
+                  <option value="1.55">Moderately active</option>
+                  <option value="1.725">Very active</option>
+                  <option value="1.9">Super active</option>
+                </select></label>
+                <div style="display:flex;gap:8px;margin-top:10px">
+                  <button id="btn-save-profile" class="btn">Save Profile</button>
+                  <button id="btn-calc-from-profile" class="btn secondary">Use for Calculations</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Profile Summary</h3>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <div class="pill">Name: <span id="s-name">-</span></div>
+              <div class="pill">Age: <span id="s-age">-</span></div>
+              <div class="pill">Gender: <span id="s-gender">-</span></div>
+              <div class="pill">Height: <span id="s-height">-</span> cm</div>
+              <div class="pill">Weight: <span id="s-weight">-</span> kg</div>
+              <div class="pill">Activity: <span id="s-activity">-</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Health Calculations Page -->
+        <section id="page-calculations" class="page">
+          <div class="card">
+            <h2>Health Calculations</h2>
+            <p class="small">Compute BMI, BMR, TDEE, and Target Heart Rate Zone. You can populate fields from the Profile tab.</p>
+
+            <div class="calc-grid" style="margin-top:12px">
+              <div>
+                <label>Name <input id="calc-name" type="text" placeholder="User" /></label>
+                <label>Age <input id="calc-age" type="number" min="0" /></label>
+                <label>Gender <select id="calc-gender"><option value="male">Male</option><option value="female">Female</option></select></label>
+                <label>Height (cm) <input id="calc-height" type="number" min="50" max="250" /></label>
+                <label>Weight (kg) <input id="calc-weight" type="number" min="20" max="300" step="0.1" /></label>
+                <label>Activity Level <select id="calc-activity">
+                  <option value="1.2">Sedentary</option>
+                  <option value="1.375">Lightly active</option>
+                  <option value="1.55">Moderately active</option>
+                  <option value="1.725">Very active</option>
+                  <option value="1.9">Super active</option>
+                </select></label>
+                <div style="display:flex;gap:8px;margin-top:10px">
+                  <button id="btn-calc" class="btn">Calculate</button>
+                  <button id="btn-fill-from-profile" class="btn secondary">Fill from Profile</button>
+                </div>
+              </div>
+
+              <div class="result" id="calc-results">
+                <strong>Results</strong>
+                <div style="margin-top:8px" id="calc-output">
+                  <div class="micro muted">No results yet</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Calculator Reference / Notes</h3>
+            <ul class="micro muted">
+              <li>BMI = weight (kg) / (height (m))²</li>
+              <li>BMR (Mifflin-St Jeor): male = 10W + 6.25H − 5A + 5; female = 10W + 6.25H − 5A − 161</li>
+              <li>TDEE = BMR × activity factor</li>
+              <li>Target heart rate zone approximated as 50%–85% of (220 − age)</li>
+            </ul>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Optional modal (kept for compatibility with earlier popup behavior) -->
+  <div id="modal-backdrop" class="modal-backdrop" role="dialog" aria-hidden="true">
+    <div class="modal" role="document">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <strong id="modal-title">Calculator</strong>
+        <button id="modal-close" class="btn secondary">Close</button>
+      </div>
+      <div id="modal-content" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <script>
+    // ----------------------------- Constants & Storage -----------------------------
+    const STORAGE_KEY = 'ph_dashboard_data_v1';
+    const PROFILE_KEY = 'ph_dashboard_profile_v1';
+
+    const DEFAULT_PROFILE = { name:'Guest User', age:28, gender:'Male', height:null, weight:null, dob:null, activity:1.375 };
+
+    // utilities
+    const el = id => document.getElementById(id);
+    function nowISO(daysOffset=0){ const d=new Date(); d.setDate(d.getDate()+daysOffset); return d.toISOString().slice(0,10); }
+    function randomInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min }
+
+    // ----------------------------- Data Seeding & Load/Save -----------------------------
+    function seedData(days=90){
+      const arr=[];
+      for(let i=days-1;i>=0;i--){
+        const date = nowISO(-i);
+        const steps = Math.max(500, Math.round(6000 + Math.sin(i/4)*1400 + randomInt(-1000,1200)));
+        const restingHR = Math.round(62 + Math.sin(i/7)*3 + randomInt(-4,4));
+        const sleepHours = +(6 + Math.cos(i/6)*1.2 + Math.random()*0.8).toFixed(1);
+        const bloodSugar = Math.round(88 + Math.sin(i/5)*10 + randomInt(-8,8));
+        const systolic = Math.round(112 + Math.sin(i/9)*6 + randomInt(-6,6));
+        const diastolic = Math.round(72 + Math.cos(i/9)*4 + randomInt(-4,4));
+        const weight = +(70 + Math.sin(i/12)*1.5 + Math.random()*0.8).toFixed(1);
+        arr.push({ date, steps, restingHR, sleepHours, bloodSugar, systolic, diastolic, weight });
+      }
+      return arr;
+    }
+
+    function loadData(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return seedData(90);
+      try{ return JSON.parse(raw) }catch(e){ return seedData(90) }
+    }
+    function saveData(data){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)) }
+
+    function loadProfile(){ try{ return JSON.parse(localStorage.getItem(PROFILE_KEY)) || DEFAULT_PROFILE } catch(e){ return DEFAULT_PROFILE } }
+    function saveProfile(p){ localStorage.setItem(PROFILE_KEY, JSON.stringify(p)) }
+
+    // ----------------------------- Risk scoring (simple, not medical) -----------------------------
+    function predictRisk(recent){
+      const last = recent[recent.length-1] || {};
+      let score=0;
+      score += Math.max(0,(last.bloodSugar-100)*0.6);
+      score += Math.max(0,(last.systolic-120)*0.4);
+      score += Math.max(0,(7-last.sleepHours)*10);
+      score += Math.max(0,(7000-last.steps)/200);
+      score += Math.max(0,(last.restingHR-72)*1.2);
+      score = Math.round(Math.max(0,Math.min(100,score)));
+      let cat='Low Risk';
+      if(score>=70) cat='High Risk'; else if(score>=40) cat='Moderate Risk';
+      const suggestions=[];
+      if(score>=70) suggestions.push('High risk detected — consult a physician for cardiometabolic evaluation.');
+      if(last.steps < 7000) suggestions.push('Increase daily activity; target 8k–10k steps.');
+      if(last.sleepHours < 7) suggestions.push('Improve sleep hygiene: aim for 7–8 hours per night.');
+      if(last.bloodSugar > 110) suggestions.push('Review carbohydrate intake and monitor blood sugar.');
+      return { score, cat, suggestions };
+    }
+
+    // ----------------------------- App State -----------------------------
+    let DATA = loadData();
+    let PROFILE = loadProfile();
+
+    // charts
+    let trendChart = null, activityChart = null;
+
+    // ----------------------------- Rendering Functions -----------------------------
+    function renderProfileSummary(){
+      el('profile-name').textContent = PROFILE.name || DEFAULT_PROFILE.name;
+      el('profile-age').textContent = PROFILE.age || DEFAULT_PROFILE.age;
+      el('profile-gender').textContent = PROFILE.gender || DEFAULT_PROFILE.gender;
+      el('avatar').textContent = (PROFILE.name || 'U').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+      // profile page fields and summary
+      el('p-name').value = PROFILE.name || '';
+      el('p-dob').value = PROFILE.dob || '';
+      el('p-age').value = PROFILE.age || '';
+      el('p-gender').value = PROFILE.gender || 'Male';
+      el('p-height').value = PROFILE.height || '';
+      el('p-weight').value = PROFILE.weight || '';
+      el('p-activity').value = PROFILE.activity || 1.375;
+
+      el('s-name').textContent = PROFILE.name || '-';
+      el('s-age').textContent = PROFILE.age || '-';
+      el('s-gender').textContent = PROFILE.gender || '-';
+      el('s-height').textContent = PROFILE.height || '-';
+      el('s-weight').textContent = PROFILE.weight || '-';
+      el('s-activity').textContent = PROFILE.activity || '-';
+
+      saveProfile(PROFILE);
+    }
+
+    function renderTable(range=30, filterText=''){
+      const tbody = document.querySelector('#data-table tbody'); tbody.innerHTML='';
+      const rows = DATA.slice(-range).filter(r=>{
+        if(!filterText) return true;
+        return r.date.includes(filterText) || (r.note && r.note.toLowerCase().includes(filterText.toLowerCase()));
+      });
+      for(const d of rows.slice().reverse()){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${d.date}</td><td>${d.steps}</td><td>${d.restingHR}</td><td>${d.sleepHours}</td><td>${d.bloodSugar}</td><td>${d.systolic}/${d.diastolic}</td><td>${d.weight || '-'}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function movingAverage(arr,key,window=7){
+      return arr.map((_,i)=>{
+        const start = Math.max(0,i-window+1);
+        const slice = arr.slice(start,i+1);
+        const avg = slice.reduce((a,b)=>a+(b[key]||0),0)/slice.length; return +avg.toFixed(1);
+      });
+    }
+
+    function renderMetrics(range=30, metric='steps'){
+      const recent = DATA.slice(-range);
+      if(recent.length===0) return;
+      const values = recent.map(d=>d[metric]||0);
+      const avg = Math.round(values.reduce((a,b)=>a+b,0)/values.length);
+      const min = Math.min(...values); const max = Math.max(...values);
+      el('m-avg').textContent = avg; el('m-min').textContent = min; el('m-max').textContent = max;
+      const ma = movingAverage(recent, metric, 7).slice(-1)[0] || '-'; el('m-ma').textContent = ma;
+    }
+
+    function renderCharts(range=30, metric='steps'){
+      const recent = DATA.slice(-range);
+      const labels = recent.map(r=>r.date);
+      const dataVals = recent.map(r=>r[metric]||0);
+
+      // trend chart
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      if(trendChart) trendChart.destroy();
+      trendChart = new Chart(ctx,{ type:'line', data:{ labels, datasets:[{ label:metric, data:dataVals, tension:0.3, fill:true, pointRadius:2 }] }, options:{ responsive:true, plugins:{ legend:{ display:false }, tooltip:{ mode:'index' } }, scales:{ x:{ display:true }, y:{ display:true } } } });
+
+      // activity chart (categories)
+      const ctx2 = document.getElementById('activityChart').getContext('2d');
+      if(activityChart) activityChart.destroy();
+      const stepBuckets = recent.map(r=>{
+        if(r.steps>=10000) return 'Very Active';
+        if(r.steps>=7000) return 'Active';
+        if(r.steps>=4000) return 'Low Active';
+        return 'Sedentary';
+      });
+      const categories = ['Very Active','Active','Low Active','Sedentary'];
+      const counts = categories.map(c=> stepBuckets.filter(s=>s===c).length );
+      activityChart = new Chart(ctx2,{ type:'bar', data:{ labels:categories, datasets:[{ label:'Days', data:counts, barPercentage:0.6 }] }, options:{ responsive:true, plugins:{ legend:{ display:false }, tooltip:{ enabled:true } }, scales:{ x:{ display:true }, y:{ display:true, beginAtZero:true } } } });
+
+      el('chart-title').textContent = metric;
+      renderMetrics(range, metric);
+    }
+
+    function renderRiskAndInsights(range=30, threshold=70){
+      const recent = DATA.slice(-7);
+      const pred = predictRisk(recent);
+      el('risk-score').textContent = pred.score;
+      el('risk-cat').textContent = pred.cat;
+      el('insight-box').textContent = `Score ${pred.score}: ${pred.cat} — insights based on last 7 days.`;
+      const sug = el('suggestions'); sug.innerHTML='';
+      pred.suggestions.forEach(s=>{
+        const d=document.createElement('div'); d.className='micro muted'; d.textContent='• '+s; sug.appendChild(d);
+      });
+      // alerts
+      if(pred.score>=threshold){ addAlert('danger', 'High risk detected — review recommendations and seek medical attention if necessary.'); }
+      else if(pred.score>= (threshold-30)){ addAlert('warn', 'Moderate risk — monitor trends and consider lifestyle changes.'); }
+    }
+
+    function renderNotes(){
+      const eln = el('notes-list'); eln.innerHTML='';
+      const notes = (localStorage.getItem('ph_notes')||'[]');
+      try{
+        JSON.parse(notes).forEach(n=>{
+          const d=document.createElement('div'); d.className='pill'; d.style.marginBottom='6px'; d.textContent = `${n.date} — ${n.text}`; eln.appendChild(d);
+        });
+      }catch(e){}
+    }
+
+    function renderAlerts(){
+      const node = el('alerts'); node.innerHTML='';
+      const alerts = JSON.parse(localStorage.getItem('ph_alerts')||'[]');
+      alerts.forEach(a=>{
+        const d=document.createElement('div');
+        d.className = 'alert '+(a.level==='high' || a.level==='danger' ? 'danger' : a.level==='medium' ? 'warn' : 'info');
+        d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div style="max-width:78%">${a.text}</div><div><button data-id="${a.id}" class="btn secondary">Ack</button></div></div>`;
+        node.appendChild(d);
+      });
+    }
+
+    // ----------------------------- Actions -----------------------------
+    function addAlert(level, text){
+      const list = JSON.parse(localStorage.getItem('ph_alerts')||'[]');
+      const a = { id: Date.now(), level: level==='danger'?'high':(level==='warn'?'medium':'info'), text, ts: Date.now() };
+      list.unshift(a); localStorage.setItem('ph_alerts', JSON.stringify(list.slice(0,30))); renderAlerts();
+    }
+
+    function addNote(text){
+      const list = JSON.parse(localStorage.getItem('ph_notes')||'[]');
+      list.unshift({ date: nowISO(), text }); localStorage.setItem('ph_notes', JSON.stringify(list.slice(0,50))); renderNotes();
+    }
+
+    function addMockDay(){
+      const last = DATA[DATA.length-1] || { date: nowISO(-1), steps:6000, restingHR:68, sleepHours:7, bloodSugar:95, systolic:115, diastolic:75, weight:70 };
+      const nextDate = new Date(Date.parse(last.date)); nextDate.setDate(nextDate.getDate()+1);
+      const next = { date: nextDate.toISOString().slice(0,10), steps: Math.max(500, Math.round(last.steps + randomInt(-1200,1400))), restingHR: Math.round(last.restingHR + randomInt(-3,3)), sleepHours: +(Math.max(3, (last.sleepHours + (Math.random()-0.5))).toFixed(1)), bloodSugar: Math.round(Math.max(70,last.bloodSugar+randomInt(-8,8))), systolic: Math.round(last.systolic+randomInt(-5,5)), diastolic: Math.round(last.diastolic+randomInt(-4,4)), weight: +(Math.max(50,last.weight + (Math.random()-0.5)).toFixed(1)) };
+      DATA.push(next); saveData(DATA); renderAll();
+    }
+
+    function addQuickEntry(form){
+      const date = form.querySelector('#q-date').value;
+      if(!date) return alert('Choose a date');
+      const entry = {
+        date,
+        steps: parseInt(form.querySelector('#q-steps').value,10)||0,
+        restingHR: parseInt(form.querySelector('#q-hr').value,10)||0,
+        sleepHours: parseFloat(form.querySelector('#q-sleep').value)||0,
+        bloodSugar: parseInt(form.querySelector('#q-sugar').value,10)||0,
+        systolic: parseInt(form.querySelector('#q-sys').value,10)||0,
+        diastolic: parseInt(form.querySelector('#q-dia').value,10)||0,
+        weight: null
+      };
+      // replace if date exists
+      const idx = DATA.findIndex(r=>r.date===date);
+      if(idx>=0) DATA[idx]=entry; else DATA.push(entry);
+      DATA.sort((a,b)=> new Date(a.date)-new Date(b.date));
+      saveData(DATA); renderAll();
+    }
+
+    function exportCSV(){
+      const keys = ['date','steps','restingHR','sleepHours','bloodSugar','systolic','diastolic','weight'];
+      const lines = [keys.join(',')];
+      for(const r of DATA){ lines.push(keys.map(k=>r[k]===undefined? '':String(r[k])).join(',')); }
+      const blob = new Blob([lines.join('\n')], { type:'text/csv' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download = `health_data_${nowISO()}.csv`; a.click(); URL.revokeObjectURL(url);
+    }
+
+    function downloadChartPNG(){
+      if(!trendChart) return alert('No chart available');
+      const url = trendChart.toBase64Image(); const a=document.createElement('a'); a.href=url; a.download = `trend_${nowISO()}.png`; a.click();
+    }
+
+    function scheduleSync(){
+      const interval = parseInt(el('sync-interval').value,10)||60; // minutes
+      if(window._ph_sync_interval) clearInterval(window._ph_sync_interval);
+      window._ph_sync_interval = setInterval(()=>{ console.log('Auto-sync triggered'); addAlert('info','Auto-sync completed'); }, interval*60*1000);
+    }
+
+    function simulateDeviceSync(){
+      el('mini-loader').style.display='inline-block';
+      setTimeout(()=>{ el('mini-loader').style.display='none'; addAlert('info', 'Device data synced'); }, 1200 + randomInt(0,900));
+    }
+
+    // ----------------------------- Calculator logic -----------------------------
+    function calculateHealth({name, age, gender, height, weight, activity}){
+      if(!age || !height || !weight) return null;
+      const hM = height/100;
+      const bmi = +(weight / (hM*hM)).toFixed(1);
+      const status = bmi<18.5?'Underweight':bmi<25?'Normal':bmi<30?'Overweight':'Obese';
+      const bmr = gender === 'male' ? (10*weight + 6.25*height - 5*age + 5) : (10*weight + 6.25*height - 5*age - 161);
+      const tdee = Math.round(bmr * (parseFloat(activity) || 1.375));
+      const maxHR = 220 - age;
+      const zoneLow = Math.round(maxHR * 0.5);
+      const zoneHigh = Math.round(maxHR * 0.85);
+      return { name, age, gender, height, weight, bmi, status, bmr:Math.round(bmr), tdee, zoneLow, zoneHigh };
+    }
+
+    function showCalculationResult(obj){
+      const out = el('calc-output');
+      if(!obj){ out.innerHTML = '<div class="micro muted">Fill all fields and click Calculate.</div>'; return; }
+      out.innerHTML = `<div><strong>Hello ${obj.name || 'User'}!</strong></div>
+        <div style="margin-top:8px">
+          <div><b>BMI:</b> ${obj.bmi} (${obj.status})</div>
+          <div><b>BMR:</b> ${obj.bmr} kcal/day</div>
+          <div><b>TDEE (est):</b> ${obj.tdee} kcal/day</div>
+          <div><b>Target HR Zone:</b> ${obj.zoneLow}-${obj.zoneHigh} bpm</div>
+        </div>`;
+    }
+
+    // ----------------------------- Tab & Modal UI -----------------------------
+    function showPage(pageId){
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      const page = el('page-'+pageId);
+      if(page) page.classList.add('active');
+      // update tab active states
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      const tab = document.querySelector('.tab-btn[data-page="'+pageId+'"]');
+      if(tab) tab.classList.add('active');
+      // accessibility focus
+      setTimeout(()=>{ const focusTarget = page.querySelector('input,select,button,textarea'); if(focusTarget) focusTarget.focus(); }, 150);
+    }
+
+    function openModal(title, contentHTML){
+      el('modal-title').textContent = title;
+      el('modal-content').innerHTML = contentHTML;
+      el('modal-backdrop').style.display = 'flex';
+      el('modal-backdrop').setAttribute('aria-hidden','false');
+    }
+    function closeModal(){
+      el('modal-backdrop').style.display = 'none';
+      el('modal-backdrop').setAttribute('aria-hidden','true');
+      el('modal-content').innerHTML = '';
+    }
+
+    // ----------------------------- Wire Events & Init -----------------------------
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // populate defaults
+      el('q-date').value = nowISO();
+      // Tab buttons
+      document.querySelectorAll('.tab-btn').forEach(b=>{
+        b.addEventListener('click', ()=> showPage(b.dataset.page));
+      });
+
+      // top actions
+      el('btn-refresh').addEventListener('click', ()=>{ if(confirm('Restart dashboard?')) location.reload(); });
+      el('btn-sync').addEventListener('click', simulateDeviceSync);
+      el('btn-export').addEventListener('click', exportCSV);
+
+      // quick add
+      el('quick-form').addEventListener('submit', e=>{ e.preventDefault(); addQuickEntry(e.target); e.target.reset(); e.target.querySelector('#q-date').value = nowISO(); });
+
+      el('btn-add-random').addEventListener('click', addMockDay);
+
+      // data & chart interactions
+      el('range-select').addEventListener('change', ()=> renderAll());
+      el('metric-select').addEventListener('change', ()=> renderAll());
+      el('search').addEventListener('input', ()=> renderAll());
+      el('btn-download-chart').addEventListener('click', downloadChartPNG);
+
+      // alerts / notes
+      el('btn-clear-alerts').addEventListener('click', ()=>{ localStorage.removeItem('ph_alerts'); renderAlerts(); });
+      el('btn-ack-all').addEventListener('click', ()=>{ localStorage.removeItem('ph_alerts'); renderAlerts(); });
+      document.querySelector('#alerts').addEventListener('click', (ev)=>{ if(ev.target.matches('button')){ const id = ev.target.getAttribute('data-id'); const arr = JSON.parse(localStorage.getItem('ph_alerts')||'[]').filter(a=>String(a.id)!==String(id)); localStorage.setItem('ph_alerts', JSON.stringify(arr)); renderAlerts(); } });
+
+      el('btn-schedule-checkup').addEventListener('click', ()=>{ addNote('Scheduled checkup — reminder'); alert('Checkup scheduled (mock)'); });
+      el('btn-export-report').addEventListener('click', ()=>{ window.print(); });
+
+      // notes
+      el('btn-add-note').addEventListener('click', ()=>{ const txt = el('note-text').value.trim(); if(!txt) return alert('Type a note'); addNote(txt); el('note-text').value=''; renderNotes(); });
+      el('btn-download-data').addEventListener('click', exportCSV);
+
+      // settings
+      el('risk-threshold').addEventListener('input', ()=> renderAll());
+      el('toggle-dark').addEventListener('change', (e)=>{ if(e.target.checked) document.documentElement.style.filter=''; else document.documentElement.style.filter='brightness(0.9)'; });
+      el('sync-interval').addEventListener('change', scheduleSync);
+
+      // profile edit
+      el('btn-edit-profile').addEventListener('click', ()=>{
+        // show profile page
+        showPage('profile');
+      });
+
+      el('btn-save-profile').addEventListener('click', ()=>{
+        const p = {
+          name: el('p-name').value || DEFAULT_PROFILE.name,
+          dob: el('p-dob').value || null,
+          age: parseInt(el('p-age').value,10) || DEFAULT_PROFILE.age,
+          gender: el('p-gender').value || DEFAULT_PROFILE.gender,
+          height: el('p-height').value ? parseFloat(el('p-height').value) : null,
+          weight: el('p-weight').value ? parseFloat(el('p-weight').value) : null,
+          activity: el('p-activity').value || DEFAULT_PROFILE.activity
+        };
+        PROFILE = p; saveProfile(PROFILE); renderProfileSummary(); alert('Profile saved locally.');
+      });
+
+      el('btn-calc-from-profile').addEventListener('click', ()=>{
+        // navigate to calculations and fill
+        fillCalculatorFromProfile();
+        showPage('calculations');
+      });
+
+      el('btn-fill-from-profile').addEventListener('click', fillCalculatorFromProfile);
+
+      el('btn-open-calculator').addEventListener('click', ()=> showPage('calculations'));
+
+      // calculator
+      el('btn-calc').addEventListener('click', ()=>{
+        const payload = {
+          name: el('calc-name').value || PROFILE.name || 'User',
+          age: parseInt(el('calc-age').value,10) || PROFILE.age,
+          gender: el('calc-gender').value || (PROFILE.gender||'male').toLowerCase(),
+          height: parseFloat(el('calc-height').value) || PROFILE.height,
+          weight: parseFloat(el('calc-weight').value) || PROFILE.weight,
+          activity: el('calc-activity').value || PROFILE.activity
+        };
+        const res = calculateHealth({ name: payload.name, age: payload.age, gender: payload.gender.toLowerCase(), height: payload.height, weight: payload.weight, activity: payload.activity });
+        showCalculationResult(res);
+      });
+
+      el('btn-fill-from-profile').addEventListener('click', fillCalculatorFromProfile);
+
+      // fallback modal open/close (keeps compatibility with earlier blob behavior)
+      el('modal-close').addEventListener('click', closeModal);
+      el('modal-backdrop').addEventListener('click', (ev)=>{ if(ev.target===el('modal-backdrop')) closeModal(); });
+
+      // widget buttons
+      el('btn-generate-report').addEventListener('click', ()=> window.print());
+      el('btn-go-to-chart').addEventListener('click', ()=> window.scrollTo({ top: 300, behavior:'smooth' }));
+      el('btn-view-data').addEventListener('click', ()=> window.scrollTo({ top: 700, behavior:'smooth' }));
+      el('btn-help').addEventListener('click', ()=> alert('This demo shows mock predictive insights. Use Quick Add to add daily metrics.'));
+
+      // initial render
+      renderAll();
+      scheduleSync();
+
+      // small accessibility focus
+      el('range-select').classList.add('focus');
+
+      // expose debug helpers
+      window.ph = { DATA, saveData, loadData, seedData, addMockDay, addAlert, PROFILE };
+    });
+
+    // helper to fill calculator from profile
+    function fillCalculatorFromProfile(){
+      const p = PROFILE || DEFAULT_PROFILE;
+      el('calc-name').value = p.name || '';
+      el('calc-age').value = p.age || '';
+      el('calc-gender').value = (p.gender||'Male').toLowerCase() === 'female' ? 'female' : 'male';
+      el('calc-height').value = p.height || '';
+      el('calc-weight').value = p.weight || '';
+      el('calc-activity').value = p.activity || 1.375;
+    }
+
+    // overall render entrypoint
+    function renderAll(){
+      const range = parseInt(el('range-select').value,10) || 30;
+      const metric = el('metric-select').value || 'steps';
+      renderProfileSummary();
+      renderTable(range, el('search').value.trim());
+      renderCharts(range, metric);
+      renderRiskAndInsights(range, parseInt(el('risk-threshold').value,10));
+      renderNotes();
+      renderAlerts();
+    }
+  </script>
+</body>
+</html>
